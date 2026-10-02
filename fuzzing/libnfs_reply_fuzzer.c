@@ -207,9 +207,18 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 	if (idx >= sizeof(decoders) / sizeof(decoders[0]))
 		return 0;
 
+	/*
+	 * The decoders read 32-bit words straight from the buffer, and
+	 * data + 1 is not 4-byte aligned, so decode from an aligned copy.
+	 */
+	char *buf = malloc(size - 1);
+	if (buf == NULL)
+		return 0;
+	memcpy(buf, data + 1, size - 1);
+
 	ZDR zdr;
 	memset(&zdr, 0, sizeof(zdr));
-	zdrmem_create(&zdr, (caddr_t)(data + 1), (uint32_t)(size - 1),
+	zdrmem_create(&zdr, (caddr_t)buf, (uint32_t)(size - 1),
 	              ZDR_DECODE);
 
 	void *obj = calloc(1, decoders[idx].size);
@@ -218,5 +227,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 		free(obj);
 	}
 	zdr_destroy(&zdr);
+	free(buf);
 	return 0;
 }
