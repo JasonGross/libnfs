@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Fuzzes libnfs decoding of RPC replies from an NFS server. The first
+// Fuzzes libnfs decoding of RPC replies from an NFS server. The last
 // input byte selects one of the generated ZDR reply decoders (NFS v2/v3,
 // mount v1/v3, NLM v4, portmap v2/v3, rquota, NFSv4.x compound); the
-// remaining bytes are the decoded reply payload, mirroring how
-// rpc_process_pdu hands server data to the per procedure decoder.
+// preceding bytes are the decoded reply payload, mirroring how
+// rpc_process_pdu hands server data to the per procedure decoder. The
+// payload starts at the beginning of the input so that it is 4-byte
+// aligned, as the ZDR decoders expect.
 
 /* glibc needs this for caddr_t in the system headers */
 #ifndef __APPLE__
@@ -203,13 +205,15 @@ static const struct decoder_entry decoders[] = {
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 	if (size < 2)
 		return 0;
-	const unsigned idx = data[0];
+	/* The last byte selects the decoder, so the payload starts at data,
+	 * which libFuzzer allocates with malloc alignment. */
+	const unsigned idx = data[size - 1];
 	if (idx >= sizeof(decoders) / sizeof(decoders[0]))
 		return 0;
 
 	ZDR zdr;
 	memset(&zdr, 0, sizeof(zdr));
-	zdrmem_create(&zdr, (caddr_t)(data + 1), (uint32_t)(size - 1),
+	zdrmem_create(&zdr, (caddr_t)data, (uint32_t)(size - 1),
 	              ZDR_DECODE);
 
 	void *obj = calloc(1, decoders[idx].size);

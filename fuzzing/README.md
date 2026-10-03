@@ -5,7 +5,7 @@ sends back to the client. Not part of the normal build, nothing else in
 the tree depends on it.
 
 The harness feeds a buffer to one of the generated ZDR reply decoders,
-picked by the first input byte, the same dispatch rpc_process_pdu uses
+picked by the last input byte, the same dispatch rpc_process_pdu uses
 when it hands a reply to the per procedure decoder. All 157 of them are
 covered: NFS v2/v3, mount v1/v3, NLM, portmap v2/v3, rquota and the
 NFSv4.x compound, so the deep structures (READDIRPLUS3, fattr3, NFSv4
